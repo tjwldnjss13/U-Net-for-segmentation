@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import os
 from model import UNet
 from dataset import COCODataset, collate_fn
-from utils import crop
+from utils import crop, pad_3dim, pad_2dim
 
 if __name__ == '__main__':
     root = 'C://DeepLearningData/COCOdataset2017'
@@ -34,49 +34,58 @@ if __name__ == '__main__':
     # loss_func = nn.NLLLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
+    zero_in_3 = torch.zeros((1, 256, 256)).cuda()
+    zero_in_2 = torch.zeros((256, 256)).cuda()
+
     train_losses = []
     val_losses = []
     for e in range(num_epoch):
         train_loss = 0
         for i, (images, annotations) in enumerate(train_data_loader):
-            print('[{}/{}] {}/{} '.format(e + 1, num_epoch, i + 1, len(train_data_loader)))
+            print('[{}/{}] {}/{} '.format(e + 1, num_epoch, (i + 1) * batch_size, len(train_data_loader)))
             ann = annotations
 
-            # print(type(annotations[0]))
+            if (i + 1) * batch_size == 64:
+                print('break')
 
-            x = crop(images[0], (256, 256)).unsqueeze(0).cuda()
+            x_pad = pad_3dim(images[0], zero_in)
+            x = crop(x_pad, (256, 256)).unsqueeze(0).cuda()
+            print(ann[0]['file_name'])
+            print(x.shape)
             for b in range(1, batch_size):
-                x_add = crop(images[b], (256, 256)).unsqueeze(0).cuda()
+                x_add_pad = pad_3dim(images[b], zero_in)
+                x_add = crop(x_add_pad, (256, 256)).unsqueeze(0).cuda()
+                if (i + 1) * batch_size == 64:
+                    print(ann[b]['file_name'])
+                    print(x_add.shape)
                 x = torch.cat([x, x_add], dim=0)
 
             y_ = ann[0]['mask']
             if len(y_) == 0:
-                y_ = torch.zeros((1, 1, 256, 256)).cuda()
+                y_ = torch.zeros((1, 256, 256), dtype=torch.long).cuda()
             else:
-                y_ = crop(torch.Tensor(y_).unsqueeze(0), (256, 256)).unsqueeze(0).cuda()
+                y_pad = pad_2dim()
+                y_ = crop(torch.LongTensor(y_).unsqueeze(0), (256, 256)).cuda()
             for m in range(1, batch_size):
                 y_add = ann[m]['mask']
                 if len(y_add) == 0:
-                    y_add = torch.zeros((1, 1, 256, 256)).cuda()
+                    y_add = torch.zeros((1, 256, 256), dtype=torch.long).cuda()
                 else:
-                    y_add = crop(torch.Tensor(y_add).unsqueeze(0), (256, 256)).unsqueeze(0).cuda()
+                    y_add = crop(torch.LongTensor(y_add).unsqueeze(0), (256, 256)).cuda()
                 y_ = torch.cat([y_, y_add], dim=0).cuda()
 
             optimizer.zero_grad()
             output = model(x)
 
-            print('x: {}'.format(x.shape))
-            print('output: {}'.format(output.shape))
-            print('y_: {}'.format(y_.shape))
+            # print('x: {}'.format(x.shape))
+            # print('output: {}'.format(output.shape))
+            # print('y_: {}'.format(y_.shape))
 
             loss = loss_func(output, y_)
             loss.backward()
             optimizer.step()
 
             train_loss += loss.item()
-
-            if i + 1 == 23:
-                print('break')
 
         train_losses.append(train_loss / (i + 1))
         print('<train_loss> {} '.format(train_losses[-1]), end='')

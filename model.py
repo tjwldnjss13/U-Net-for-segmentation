@@ -6,7 +6,7 @@ import torchvision.transforms as transforms
 import torchvision.datasets as dset
 
 from torchsummary import summary
-from utils import pad
+from utils import pad_4dim
 
 
 class UNet(nn.Module):
@@ -47,16 +47,16 @@ class UNet(nn.Module):
         # x3_crop = self.crop(x3, (int(self.in_size[0] / 4), int(self.in_size[1] / 4)))
         # x2_crop = self.crop(x2, (int(self.in_size[0] / 2), int(self.in_size[1] / 2)))
 
-        x = pad(x, x4)
+        x = pad_4dim(x, x4)
         x6 = x = torch.cat([x, x4], dim=1)
         x = self.back4(x)
-        x = pad(x, x3)
+        x = pad_4dim(x, x3)
         x7 = x = torch.cat([x, x3], dim=1)
         x = self.back3(x)
-        x = pad(x, x2)
+        x = pad_4dim(x, x2)
         x8 = x = torch.cat([x, x2], dim=1)
         x = self.back2(x)
-        x = pad(x, x1)
+        x = pad_4dim(x, x1)
         x9 = x = torch.cat([x, x1], dim=1)
         x = self.back1(x)
         x9 = x = self.conv1(x)
