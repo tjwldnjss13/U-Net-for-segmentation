@@ -1,8 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torch.nn.init as init
-import torchvision.datasets as dset
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
@@ -10,24 +8,31 @@ import matplotlib.pyplot as plt
 import os
 import time
 from model import UNet
-from dataset import COCODataset, collate_fn
+from dataset.coco_dataset import COCODataset, collate_fn
+from dataset.voc_dataset import VOCDataset, collate_fn
 from utils import crop, pad_3dim, pad_2dim, mean_iou, time_calculator
 
 if __name__ == '__main__':
-    model_load = 'saved_models/unet_0.01lr_20epoch_0.60260loss_0.33362iou.pth'
+    batch_size = 128
+    num_epoch = 20
+    learning_rate = .0001
 
+    #################### COCO Datasets ####################
     root = 'C://DeepLearningData/COCOdataset2017'
     root_train = os.path.join(root, 'images', 'train')
     root_val = os.path.join(root, 'images', 'val')
     ann_train = os.path.join(root, 'annotations', 'instances_train2017.json')
     ann_val = os.path.join(root, 'annotations', 'instances_val2017.json')
 
-    batch_size = 64
-    num_epoch = 20
-    learning_rate = .005
-
     dset_train = COCODataset(root_train, ann_train, transforms.Compose([transforms.ToTensor()]))
     dset_val = COCODataset(root_val, ann_val, transforms.Compose([transforms.ToTensor()]))
+
+    #################### PASCAL VOC Dataset ####################
+    # root = 'C://DeepLearningData/VOC2012/'
+    # transforms = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
+    # dset_train = VOCDataset(root, True, transforms=transforms)
+    # dset_val = VOCDataset(root, False, transforms=transforms)
+
     train_data_loader = DataLoader(dset_train, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
     val_data_loader = DataLoader(dset_val, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
 
@@ -35,11 +40,14 @@ if __name__ == '__main__':
     num_val_images = dset_val.__len__()
 
     model = UNet(3, 2).cuda()
+
+    # model_load = 'saved_models/unet_0.001lr_30epoch_0.46214loss_0.65161iou.pth'
     # model = torch.load(model_load).cuda()
 
     loss_func = nn.CrossEntropyLoss()
     # loss_func = nn.NLLLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    # optimizer = optim.SGD(model.parameters(), lr=learning_rate)
 
     train_losses = []
     # train_accs = []

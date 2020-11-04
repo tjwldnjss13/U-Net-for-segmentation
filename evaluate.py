@@ -8,10 +8,10 @@ from torchsummary import summary
 from model import UNet
 
 if __name__ == '__main__':
-    PATH = 'saved_models/unet_10epoch_0.4129500046267646loss.pth'
+    PATH = 'saved_models/unet_0.0009lr_16epoch_0.47204loss_0.65117iou.pth'
     model = torch.load(PATH).cuda()
 
-    img_pth = 'sample/pomeranian.jpg'
+    img_pth = 'sample/dogs.jpg'
     img = Image.open(img_pth)
     img = np.array(img)
     img = torch.FloatTensor(img).cuda().permute(2, 0, 1).unsqueeze(0)
