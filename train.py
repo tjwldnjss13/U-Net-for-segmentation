@@ -18,20 +18,20 @@ if __name__ == '__main__':
     learning_rate = .0001
 
     #################### COCO Datasets ####################
-    root = 'C://DeepLearningData/COCOdataset2017'
-    root_train = os.path.join(root, 'images', 'train')
-    root_val = os.path.join(root, 'images', 'val')
-    ann_train = os.path.join(root, 'annotations', 'instances_train2017.json')
-    ann_val = os.path.join(root, 'annotations', 'instances_val2017.json')
-
-    dset_train = COCODataset(root_train, ann_train, transforms.Compose([transforms.ToTensor()]))
-    dset_val = COCODataset(root_val, ann_val, transforms.Compose([transforms.ToTensor()]))
+    # root = 'C://DeepLearningData/COCOdataset2017'
+    # root_train = os.path.join(root, 'images', 'train')
+    # root_val = os.path.join(root, 'images', 'val')
+    # ann_train = os.path.join(root, 'annotations', 'instances_train2017.json')
+    # ann_val = os.path.join(root, 'annotations', 'instances_val2017.json')
+    #
+    # dset_train = COCODataset(root_train, ann_train, transforms.Compose([transforms.ToTensor()]))
+    # dset_val = COCODataset(root_val, ann_val, transforms.Compose([transforms.ToTensor()]))
 
     #################### PASCAL VOC Dataset ####################
-    # root = 'C://DeepLearningData/VOC2012/'
-    # transforms = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
-    # dset_train = VOCDataset(root, True, transforms=transforms)
-    # dset_val = VOCDataset(root, False, transforms=transforms)
+    root = 'C://DeepLearningData/VOC2012/'
+    transforms = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
+    dset_train = VOCDataset(root, True, transforms=transforms)
+    dset_val = VOCDataset(root, False, transforms=transforms)
 
     train_data_loader = DataLoader(dset_train, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
     val_data_loader = DataLoader(dset_val, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
