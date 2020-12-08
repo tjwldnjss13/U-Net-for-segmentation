@@ -3,8 +3,11 @@ import cv2 as cv
 import numpy as np
 import torch
 import torch.utils.data as data
+import torchvision.transforms as transforms
 
 from PIL import Image
+
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
 class EMDataset(data.Dataset):
@@ -37,27 +40,37 @@ class EMDataset(data.Dataset):
         for i, img_fn in enumerate(imgs_fn):
             img_pth = os.path.join(imgs_dir, img_fn)
             img = Image.open(img_pth)
-            img = np.array(img)
+            img = transforms.ToTensor()(img).to(device)
             imgs.append(img)
 
         return imgs
 
     @staticmethod
     def augment_images(images, labels):
+        print(len(images))
+        imgs_ed, labels_ed = EMDataset.augment_images_elastic_deformation(images, labels, [3, 5, 7], [1, 2, 3])
+
+        images += imgs_ed
+        labels += labels_ed
+        print(len(images))
+
         imgs_rot, labels_rot = EMDataset.augment_images_rotate(images, labels, [90, 180, 270])
 
         images += imgs_rot
         labels += labels_rot
+        print(len(images))
 
         imgs_shift, labels_shift = EMDataset.augment_images_shift(images, labels, [1, 2, 3, 4, 5])
 
         images += imgs_shift
         labels += labels_shift
+        print(len(images))
 
         return images, labels
 
     @staticmethod
     def augment_images_shift(images, labels, shift_distances):
+        print('Shift augmentation...')
         imgs_shift = []
         labels_shift = []
         n_data = len(images)
@@ -82,7 +95,7 @@ class EMDataset(data.Dataset):
     @staticmethod
     def shift_right_image(image, shift_distance):
         d = shift_distance
-        img_shift = np.zeros(image.shape)
+        img_shift = torch.zeros(image.shape).to(device)
 
         for i in range(d):
             img_shift[:, i] = image[:, 0]
@@ -95,7 +108,7 @@ class EMDataset(data.Dataset):
     @staticmethod
     def shift_left_image(image, shift_distance):
         d = shift_distance
-        img_shift = np.zeros(image.shape)
+        img_shift = torch.zeros(image.shape).to(device)
 
         for i in range(d):
             img_shift[:, -i] = image[:, -1]
@@ -108,7 +121,7 @@ class EMDataset(data.Dataset):
     @staticmethod
     def shift_up_image(image, shift_distance):
         d = shift_distance
-        img_shift = np.zeros(image.shape)
+        img_shift = torch.zeros(image.shape).to(device)
 
         for i in range(d):
             img_shift[-i, :] = image[-1, :]
@@ -121,7 +134,7 @@ class EMDataset(data.Dataset):
     @staticmethod
     def shift_down_image(image, shift_distance):
         d = shift_distance
-        img_shift = np.zeros(image.shape)
+        img_shift = torch.zeros(image.shape).to(device)
 
         for i in range(d):
             img_shift[i, :] = image[0, :]
@@ -134,6 +147,7 @@ class EMDataset(data.Dataset):
 
     @staticmethod
     def augment_images_rotate(images, labels, degrees):
+        print('Rotate augmentation...')
         imgs_rot = []
         labels_rot = []
         n_data = len(images)
@@ -152,5 +166,80 @@ class EMDataset(data.Dataset):
         return imgs_rot, labels_rot
 
     @staticmethod
-    def augment_images_elastic_deform(images):
-        pass
+    def augment_images_elastic_deformation(images, labels, sigmas, alphas):
+        print('Elatstic deformation augmentation...')
+        imgs_ed = []
+        labels_ed = []
+        n_data = len(images)
+
+        for i in range(n_data):
+            img, label = images[i], labels[i]
+
+            for s in sigmas:
+                for a in alphas:
+                    img_ed, label_ed = EMDataset.elastic_deformation(img, label, s, a)
+
+                    imgs_ed.append(img_ed)
+                    labels_ed.append(label_ed)
+
+        return imgs_ed, labels_ed
+
+    @staticmethod
+    def elastic_deformation(img, label, sigma, alpha):
+        img_dst = np.zeros(img.shape)
+        label_dst = np.zeros(label.shape)
+
+        # Sampling from Unif(-1, 1)
+        dx = np.random.uniform(-1, 1, img.shape[:2])
+        dy = np.random.uniform(-1, 1, img.shape[:2])
+
+        # STD of gaussian kernel
+        sig = sigma
+
+        dx_gauss = cv.GaussianBlur(dx, (7, 7), sig)
+        dy_gauss = cv.GaussianBlur(dy, (7, 7), sig)
+
+        n = np.sqrt(dx_gauss ** 2 + dy_gauss ** 2)  # for normalization
+
+        # Strength of distortion
+        alpha = alpha
+
+        ndx = alpha * dx_gauss / n
+        ndy = alpha * dy_gauss / n
+
+        indy, indx = np.indices(img.shape[:2], dtype=np.float32)
+
+        map_x = ndx + indx
+        map_x = map_x.reshape(img.shape[:2]).astype(np.float32)
+        map_y = ndy + indy
+        map_y = map_y.reshape(img.shape[:2]).astype(np.float32)
+
+        img_dst = cv.remap(img, map_x, map_y, cv.INTER_LINEAR)
+        label_dst = cv.remap(label, map_x, map_y, cv.INTER_LINEAR)
+
+        return img_dst, label_dst
+
+
+def collate_fn(batch):
+    data = [item[0] for item in batch]
+    target = [item[1] for item in batch]
+    # print('data: ', data)
+    # print('target: ', target)
+    return [data, target]
+
+
+if __name__ == '__main__':
+    root = '../data/'
+    dset = EMDataset(root, True, True)
+
+    print(len(dset))
+    img, label = dset[0]
+
+    import matplotlib.pyplot as plt
+    plt.figure(0)
+    plt.imshow(img)
+
+    plt.figure(1)
+    plt.imshow(label)
+
+    plt.show()
