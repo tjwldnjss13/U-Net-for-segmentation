@@ -2,36 +2,38 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torchvision.transforms as transforms
-from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
+from torch.utils.data import DataLoader, random_split
+
 
 import os
 import time
 from model import UNet
 from dataset.coco_dataset import COCODataset, collate_fn
-from dataset.voc_dataset import VOCDataset, collate_fn
 from utils import crop, pad_3dim, pad_2dim, mean_iou, time_calculator
 
 if __name__ == '__main__':
-    batch_size = 128
+    batch_size = 8
     num_epoch = 20
     learning_rate = .0001
 
     #################### COCO Datasets ####################
-    # root = 'C://DeepLearningData/COCOdataset2017'
-    # root_train = os.path.join(root, 'images', 'train')
-    # root_val = os.path.join(root, 'images', 'val')
-    # ann_train = os.path.join(root, 'annotations', 'instances_train2017.json')
-    # ann_val = os.path.join(root, 'annotations', 'instances_val2017.json')
-    #
-    # dset_train = COCODataset(root_train, ann_train, transforms.Compose([transforms.ToTensor()]))
-    # dset_val = COCODataset(root_val, ann_val, transforms.Compose([transforms.ToTensor()]))
+    dset_name = 'coco dataset'
+    root = 'C://DeepLearningData/COCOdataset2017'
+    root_train = os.path.join(root, 'images', 'train')
+    root_val = os.path.join(root, 'images', 'val')
+    ann_train = os.path.join(root, 'annotations', 'instances_train2017.json')
+    ann_val = os.path.join(root, 'annotations', 'instances_val2017.json')
+
+    dset_train = COCODataset(root_train, ann_train, transforms.Compose([transforms.ToTensor()]))
+    dset_val = COCODataset(root_val, ann_val, transforms.Compose([transforms.ToTensor()]))
 
     #################### PASCAL VOC Dataset ####################
-    root = 'C://DeepLearningData/VOC2012/'
-    transforms = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
-    dset_train = VOCDataset(root, True, transforms=transforms)
-    dset_val = VOCDataset(root, False, transforms=transforms)
+    # dset_name = 'voc dataset'
+    # root = 'C://DeepLearningData/VOC2012/'
+    # transforms = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
+    # dset_train = VOCDataset(root, True, transforms=transforms)
+    # dset_val = VOCDataset(root, False, transforms=transforms), [int(n_data * .7), int(n_data * .3)])
 
     train_data_loader = DataLoader(dset_train, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
     val_data_loader = DataLoader(dset_val, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
@@ -166,7 +168,8 @@ if __name__ == '__main__':
         print('<val_loss> {} <val_iou> {}'.format(val_losses[-1], val_ious[-1]))
 
         if (e + 1) % 2 == 0:
-            PATH = 'saved_models/unet_{}lr_{}epoch_{:.5f}loss_{:.5f}iou.pth'.format(learning_rate, e + 1, val_losses[-1], val_ious[-1])
+            DIR = os.path.join('trained models', dset_name)
+            PATH = DIR + 'unet_{}lr_{}epoch_{:.5f}loss_{:.5f}iou.pth'.format(learning_rate, e + 1, val_losses[-1], val_ious[-1])
             torch.save(model, PATH)
 
     H, M, S = time_calculator(sum(train_times))

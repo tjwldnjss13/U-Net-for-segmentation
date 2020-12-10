@@ -26,6 +26,9 @@ class EMDataset(data.Dataset):
             images, labels = zip(*datas)
             self.images, self.labels = list(images), list(labels)
 
+        self.images = numpy_to_tensor_x(self.images)
+        self.labels = numpy_to_tensor_y(self.labels)
+
     def __getitem__(self, idx):
         return self.images[idx], self.labels[idx]
 
@@ -40,7 +43,7 @@ class EMDataset(data.Dataset):
         for i, img_fn in enumerate(imgs_fn):
             img_pth = os.path.join(imgs_dir, img_fn)
             img = Image.open(img_pth)
-            img = transforms.ToTensor()(img).to(device)
+            img = np.array(img) / 255.
             imgs.append(img)
 
         return imgs
@@ -48,23 +51,20 @@ class EMDataset(data.Dataset):
     @staticmethod
     def augment_images(images, labels):
         print(len(images))
-        imgs_ed, labels_ed = EMDataset.augment_images_elastic_deformation(images, labels, [3, 5, 7], [1, 2, 3])
-
+        imgs_ed, labels_ed = EMDataset.augment_images_elastic_deformation(images, labels, [3, 5, 7, 9], [1, 2, 3])
         images += imgs_ed
         labels += labels_ed
         print(len(images))
 
         imgs_rot, labels_rot = EMDataset.augment_images_rotate(images, labels, [90, 180, 270])
-
         images += imgs_rot
         labels += labels_rot
         print(len(images))
 
-        imgs_shift, labels_shift = EMDataset.augment_images_shift(images, labels, [1, 2, 3, 4, 5])
-
-        images += imgs_shift
-        labels += labels_shift
-        print(len(images))
+        # imgs_shift, labels_shift = EMDataset.augment_images_shift(images, labels, [1])
+        # images += imgs_shift
+        # labels += labels_shift
+        # print(len(images))
 
         return images, labels
 
@@ -95,7 +95,7 @@ class EMDataset(data.Dataset):
     @staticmethod
     def shift_right_image(image, shift_distance):
         d = shift_distance
-        img_shift = torch.zeros(image.shape).to(device)
+        img_shift = np.zeros(image.shape)
 
         for i in range(d):
             img_shift[:, i] = image[:, 0]
@@ -108,7 +108,7 @@ class EMDataset(data.Dataset):
     @staticmethod
     def shift_left_image(image, shift_distance):
         d = shift_distance
-        img_shift = torch.zeros(image.shape).to(device)
+        img_shift = np.zeros(image.shape)
 
         for i in range(d):
             img_shift[:, -i] = image[:, -1]
@@ -121,7 +121,7 @@ class EMDataset(data.Dataset):
     @staticmethod
     def shift_up_image(image, shift_distance):
         d = shift_distance
-        img_shift = torch.zeros(image.shape).to(device)
+        img_shift = np.zeros(image.shape)
 
         for i in range(d):
             img_shift[-i, :] = image[-1, :]
@@ -134,7 +134,7 @@ class EMDataset(data.Dataset):
     @staticmethod
     def shift_down_image(image, shift_distance):
         d = shift_distance
-        img_shift = torch.zeros(image.shape).to(device)
+        img_shift = np.zeros(image.shape)
 
         for i in range(d):
             img_shift[i, :] = image[0, :]
@@ -228,18 +228,31 @@ def collate_fn(batch):
     return [data, target]
 
 
+def numpy_to_tensor_x(array):
+    for i, a in enumerate(array):
+        tensor = torch.as_tensor(a, dtype=torch.float)
+        if len(tensor.shape) < 3:
+            tensor = tensor.unsqueeze(0)
+        array[i] = tensor
+
+    return array
+
+
+def numpy_to_tensor_y(array):
+    for i, a in enumerate(array):
+        tensor = torch.zeros((2, 512, 512), dtype=torch.long)
+        tensor[0] = torch.as_tensor((a == 0), dtype=torch.long)
+        tensor[1] = torch.as_tensor((a == 1), dtype=torch.long)
+        # tensor = torch.as_tensor(a, dtype=torch.long).to(device)
+        array[i] = tensor
+
+    return array
+
+
 if __name__ == '__main__':
     root = '../data/'
     dset = EMDataset(root, True, True)
 
-    print(len(dset))
+    n_data = len(dset)
     img, label = dset[0]
-
-    import matplotlib.pyplot as plt
-    plt.figure(0)
-    plt.imshow(img)
-
-    plt.figure(1)
-    plt.imshow(label)
-
-    plt.show()
+    print(label.shape)

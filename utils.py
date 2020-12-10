@@ -47,8 +47,21 @@ def pad_2dim(x, ref_size):
     return x
 
 
-def mean_iou(output, predict):
-    a, b = (output[:, 1, :, :] > 0), (predict > 0)
+def mean_iou(output, target):
+    a, b = (output > 0), (target > 0)
+
+    a_area = len(a.nonzero())
+    b_area = len(b.nonzero())
+    union = a_area + b_area
+    inter = len((a & b).nonzero())
+    iou = inter / (union - inter)
+
+    return iou
+
+
+def iou_segmentation_multichannel(a, b):
+    a = a.argmax(dim=1)
+    b = b.argmax(dim=1)
 
     a_area = len(a.nonzero())
     b_area = len(b.nonzero())

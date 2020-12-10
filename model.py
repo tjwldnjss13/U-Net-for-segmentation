@@ -25,6 +25,7 @@ class UNet(nn.Module):
         self.back1 = self.conv_block(32, 16)
         self.maxpool = nn.MaxPool2d(2, 2)
         self.conv1 = nn.Conv2d(16, self.out_dim, 1, 1, 0)
+        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
         x1 = x = self.front1(x)
@@ -61,6 +62,8 @@ class UNet(nn.Module):
         x = self.back1(x)
         x9 = x = self.conv1(x)
 
+        x = self.softmax(x)
+
         return x
 
     @staticmethod
@@ -78,6 +81,10 @@ class UNet(nn.Module):
 
 
 if __name__ == '__main__':
-    unet = UNet(3, 1).cuda()
+    unet = UNet(in_dim=1, out_dim=2).cuda()
 
-    summary(unet, (3, 256, 256))
+    summary(unet, (1, 512, 512))
+    dummy = torch.zeros((1, 1, 512, 512), dtype=torch.float).cuda()
+    output = unet(dummy)
+    print(output.dtype)
+    print(output.shape)
