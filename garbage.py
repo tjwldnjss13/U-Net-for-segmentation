@@ -42,41 +42,18 @@ def elastic_distortion(img, label, sigma, alpha):
     return img_dst, label_dst
 
 
-a = torch.Tensor([1, 0, 0, 1, 0])
-b =
-
-
-# img = 'data/train/0.tif'
-# img = Image.open(img)
-# img = np.array(img)
+# img = np.zeros((100, 100))
+# for i in range(100):
+#     for j in range(100):
+#         if (i > 0 and i % 25 == 0) or (j > 0 and j % 25 == 0):
+#             img[i, j] = 1
 #
-# # img = transforms.ToTensor()(img)
-# # h, w = img.shape[0], img.shape[1]
-# # M = cv.getRotationMatrix2D((h / 2, w / 2), 90, 1)
-# # dst = cv.warpAffine(img, M, (h, w))
-# # print(dst)
-#
-# label = 'data/label/0.tif'
-# label = Image.open(label)
-# label = np.array(label)
-#
-# img_dst, label_dst = elastic_distortion(img, label, 10, 1)
-#
-# img_dst = torch.as_tensor(img_dst).cuda()
-# print(img_dst)
-#
-# print((img == img_dst).sum())
+# dst, _ = elastic_distortion(img, img, 10, 1)
 #
 # plt.figure(0)
 # plt.imshow(img)
 #
 # plt.figure(1)
-# plt.imshow(img_dst)
-#
-# plt.figure(2)
-# plt.imshow(label)
-#
-# plt.figure(3)
-# plt.imshow(label_dst)
-#
+# plt.imshow(dst)
 # plt.show()
+

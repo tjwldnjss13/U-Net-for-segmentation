@@ -6,7 +6,7 @@ import torchvision.transforms as transforms
 import torchvision.datasets as dset
 
 from torchsummary import summary
-from utils import pad_4dim
+from pytorch_utils import pad_4dim
 
 
 class UNet(nn.Module):
@@ -83,7 +83,7 @@ class UNet(nn.Module):
 if __name__ == '__main__':
     unet = UNet(in_dim=1, out_dim=2).cuda()
 
-    summary(unet, (1, 512, 512))
+    summary(unet, (1, 572, 572))
     dummy = torch.zeros((1, 1, 512, 512), dtype=torch.float).cuda()
     output = unet(dummy)
     print(output.dtype)

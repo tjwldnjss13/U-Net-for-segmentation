@@ -10,7 +10,8 @@ import os
 import time
 from model import UNet
 from dataset.em_dataset import EMDataset, collate_fn
-from utils import crop, pad_3dim, pad_2dim, mean_iou, iou_segmentation_multichannel, time_calculator
+from utils import time_calculator
+from pytorch_utils import mean_iou_seg_argmin_pytorch
 from loss import custom_cross_entropy_loss
 
 
@@ -28,9 +29,10 @@ def make_batch_tensor(tensor_list):
 
 
 if __name__ == '__main__':
-    batch_size = 8
-    num_epoch = 20
-    learning_rate = .0001
+    batch_size = 16
+    num_epoch = 200
+    learning_rate = .00005
+    save_term = 5
 
     #################### EM Segment Challenge Dataset ####################
     dset_name = 'em dataset'
@@ -45,10 +47,9 @@ if __name__ == '__main__':
     num_train_images = dset_train.__len__()
     num_val_images = dset_val.__len__()
 
-    model = UNet(in_dim=1, out_dim=2).cuda()
-
-    # model_load = 'saved_models/unet_0.001lr_30epoch_0.46214loss_0.65161iou.pth'
-    # model = torch.load(model_load).cuda()
+    model = UNet(in_dim=1, out_dim=2).to(device)
+    # PATH = 'trained models/em dataset/base model/unet_0.0001lr_135epoch_3.87355loss_0.91230iou.pth'
+    # model = torch.load(PATH).cuda()
 
     # loss_func = nn.CrossEntropyLoss()
     # loss_func = nn.NLLLoss()
@@ -89,7 +90,7 @@ if __name__ == '__main__':
             optimizer.zero_grad()
             loss = loss_func(output, y)
             # acc = (output[:, 1, :, :].squeeze(1) == y_).sum().item() / 256 ** 2
-            iou = iou_segmentation_multichannel(output, y)
+            iou = mean_iou_seg_argmin_pytorch(output, y)
             loss.backward()
             optimizer.step()
 
@@ -126,7 +127,7 @@ if __name__ == '__main__':
                 output = model(x)
                 loss = loss_func(output, y)
                 # acc = (output[:, 1, :, :].squeeze(1) == y_).sum().item() / 256 ** 2
-                iou = iou_segmentation_multichannel(output, y)
+                iou = mean_iou_seg_argmin_pytorch(output, y)
                 val_loss += loss.item() * n_batch
                 # val_acc += acc
                 val_iou += iou
@@ -136,9 +137,9 @@ if __name__ == '__main__':
             val_ious.append(val_iou / val_step)
         print('<val_loss> {} <val_iou> {}'.format(val_losses[-1], val_ious[-1]))
 
-        if (e + 1) % 2 == 0:
+        if (e + 1) % save_term == 0:
             DIR = os.path.join('trained models', dset_name)
-            PATH = DIR + 'unet_{}lr_{}epoch_{:.5f}loss_{:.5f}iou.pth'.format(learning_rate, e + 1, val_losses[-1], val_ious[-1])
+            PATH = os.path.join(DIR, 'unet_{}lr_{}epoch_{:.5f}loss_{:.5f}iou.pth'.format(learning_rate, e + 1, val_losses[-1], val_ious[-1]))
             torch.save(model, PATH)
 
     H, M, S = time_calculator(sum(train_times))
