@@ -6,8 +6,14 @@ import matplotlib.pyplot as plt
 import torchvision.transforms as transforms
 from PIL import Image
 
+if not torch.cuda.is_available():
+    os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+
 
 def elastic_distortion(img, label, sigma, alpha):
+    img = img.numpy()
+    label = label.numpy()
+
     img_dst = np.zeros(img.shape)
     label_dst = np.zeros(label.shape)
 
@@ -39,21 +45,28 @@ def elastic_distortion(img, label, sigma, alpha):
     img_dst = cv.remap(img, map_x, map_y, cv.INTER_LINEAR)
     label_dst = cv.remap(label, map_x, map_y, cv.INTER_LINEAR)
 
+    img_dst = torch.as_tensor(img_dst)
+    label_dst = torch.as_tensor(label_dst)
+
     return img_dst, label_dst
 
 
-# img = np.zeros((100, 100))
-# for i in range(100):
-#     for j in range(100):
-#         if (i > 0 and i % 25 == 0) or (j > 0 and j % 25 == 0):
-#             img[i, j] = 1
+a = torch.Tensor([1])
+print(a.device)
+
+# transform = transforms.Compose([transforms.Resize((388, 388)), transforms.ToTensor()])
 #
-# dst, _ = elastic_distortion(img, img, 10, 1)
+# img_pth = 'data/train/0.tif'
+# img = Image.open(img_pth)
+# img = transform(img)
 #
-# plt.figure(0)
-# plt.imshow(img)
+# print(img[0, :10])
 #
-# plt.figure(1)
-# plt.imshow(dst)
+# from pytorch_utils import mirrored_padding
+# img = mirrored_padding(img, (572, 572))
+#
+# img_np = img.numpy()
+# img_np = np.transpose(img_np, [1, 2, 0])
+# plt.imshow(img_np)
 # plt.show()
 

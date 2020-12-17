@@ -6,16 +6,25 @@ import torch.utils.data as data
 import torchvision.transforms as transforms
 
 from PIL import Image
+from pytorch_utils import mirrored_padding
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
 class EMDataset(data.Dataset):
-    def __init__(self, root, is_train=True, shuffle=False):
+    def __init__(self, root, in_size, transforms, is_train=True, shuffle=False):
         self.root = root
+        self.in_size = in_size
+        self.transforms = transforms
         if is_train:
-            self.images = self.get_images('train')
-            self.labels = self.get_images('label')
+            self.images = self.get_pil_images('train')
+            self.labels = self.get_pil_images('label')
+
+            # Added
+            self.images = self.transform_images_to_tensor(self.images, transforms)
+            self.labels = self.transform_images_to_tensor(self.labels, transforms)
+            #
+
             self.images, self.labels = EMDataset.augment_images(self.images, self.labels)
         else:
             self.images = self.get_images('test')
@@ -26,16 +35,18 @@ class EMDataset(data.Dataset):
             images, labels = zip(*datas)
             self.images, self.labels = list(images), list(labels)
 
-        self.images = numpy_to_tensor_x(self.images)
-        self.labels = numpy_to_tensor_y(self.labels)
+        # self.images = numpy_to_tensor_x(self.images)
+        # self.labels = numpy_to_tensor_y(self.labels)
 
     def __getitem__(self, idx):
-        return self.images[idx], self.labels[idx]
+        img, label = self.images[idx], self.labels[idx]
+
+        return mirrored_padding(img, self.in_size), label
 
     def __len__(self):
         return len(self.images)
 
-    def get_images(self, dir):
+    def get_pil_images(self, dir):
         imgs_dir = os.path.join(self.root, dir)
         imgs_fn = os.listdir(imgs_dir)
         imgs = []
@@ -43,10 +54,17 @@ class EMDataset(data.Dataset):
         for i, img_fn in enumerate(imgs_fn):
             img_pth = os.path.join(imgs_dir, img_fn)
             img = Image.open(img_pth)
-            img = np.array(img) / 255.
+            # img = np.array(img) / 255.
             imgs.append(img)
 
         return imgs
+
+    @staticmethod
+    def transform_images_to_tensor(image_list, transform):
+        for i, img in enumerate(image_list):
+            image_list[i] = transform(img)
+
+        return image_list
 
     @staticmethod
     def augment_images(images, labels):
@@ -95,7 +113,8 @@ class EMDataset(data.Dataset):
     @staticmethod
     def shift_right_image(image, shift_distance):
         d = shift_distance
-        img_shift = np.zeros(image.shape)
+        # img_shift = np.zeros(image.shape)
+        img_shift = torch.zeros(image.shape)
 
         for i in range(d):
             img_shift[:, i] = image[:, 0]
@@ -108,7 +127,8 @@ class EMDataset(data.Dataset):
     @staticmethod
     def shift_left_image(image, shift_distance):
         d = shift_distance
-        img_shift = np.zeros(image.shape)
+        # img_shift = np.zeros(image.shape)
+        img_shift = torch.zeros(image.shape)
 
         for i in range(d):
             img_shift[:, -i] = image[:, -1]
@@ -121,7 +141,8 @@ class EMDataset(data.Dataset):
     @staticmethod
     def shift_up_image(image, shift_distance):
         d = shift_distance
-        img_shift = np.zeros(image.shape)
+        # img_shift = np.zeros(image.shape)
+        img_shift = torch.zeros(image.shape)
 
         for i in range(d):
             img_shift[-i, :] = image[-1, :]
@@ -134,7 +155,8 @@ class EMDataset(data.Dataset):
     @staticmethod
     def shift_down_image(image, shift_distance):
         d = shift_distance
-        img_shift = np.zeros(image.shape)
+        # img_shift = np.zeros(image.shape)
+        img_shift = torch.zeros(image.shape)
 
         for i in range(d):
             img_shift[i, :] = image[0, :]
@@ -156,12 +178,20 @@ class EMDataset(data.Dataset):
             for r in degrees:
                 if r != 0:
                     img, label = images[i], labels[i]
+                    img, label = img.numpy(), label.numpy()
 
                     h, w = img.shape[0], img.shape[1]
                     M = cv.getRotationMatrix2D((w / 2, h / 2), r, 1)
 
-                    imgs_rot.append(cv.warpAffine(img, M, (w, h)))
-                    labels_rot.append(cv.warpAffine(label, M, (w, h)))
+                    img_rot = cv.warpAffine(img, M, (w, h))
+                    label_rot = cv.warpAffine(label, M, (w, h))
+
+                    img_rot, label_rot = torch.as_tensor(img_rot), torch.as_tensor(label_rot)
+
+                    # imgs_rot.append(cv.warpAffine(img, M, (w, h)))
+                    # labels_rot.append(cv.warpAffine(label, M, (w, h)))
+                    imgs_rot.append(img_rot)
+                    labels_rot.append(label_rot)
 
         return imgs_rot, labels_rot
 
@@ -174,10 +204,12 @@ class EMDataset(data.Dataset):
 
         for i in range(n_data):
             img, label = images[i], labels[i]
+            img, label = img.numpy(), label.numpy()
 
             for s in sigmas:
                 for a in alphas:
                     img_ed, label_ed = EMDataset.elastic_deformation(img, label, s, a)
+                    img_ed, label_ed = torch.as_tensor(img_ed), torch.as_tensor(label_ed)
 
                     imgs_ed.append(img_ed)
                     labels_ed.append(label_ed)

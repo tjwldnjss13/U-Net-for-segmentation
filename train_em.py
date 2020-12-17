@@ -33,11 +33,13 @@ if __name__ == '__main__':
     num_epoch = 200
     learning_rate = .00005
     save_term = 5
+    in_size = (572, 572)
 
     #################### EM Segment Challenge Dataset ####################
     dset_name = 'em dataset'
     root = 'data/'
-    dset = EMDataset(root, True, True)
+    transforms = transforms.Compose([transforms.Resize((388, 388)), transforms.ToTensor()])
+    dset = EMDataset(root, in_size, transforms, True, True)
     n_data = len(dset)
     dset_train, dset_val = random_split(dset, [int(n_data * .7), int(n_data * .3)])
 
@@ -66,6 +68,8 @@ if __name__ == '__main__':
     train_times = []
 
     for e in range(num_epoch):
+        break
+
         start_time = time.time()
         train_loss = 0
         # train_acc = 0

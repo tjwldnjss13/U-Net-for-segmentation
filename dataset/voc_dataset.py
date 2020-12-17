@@ -4,6 +4,7 @@ import random
 import numpy as np
 import torch
 import torch.utils.data as data
+import torchvision.transforms as transforms
 import xml.etree.ElementTree as Et
 
 from PIL import Image
@@ -43,8 +44,11 @@ class VOCDataset(data.Dataset):
                 img = self.transforms(img)
                 gt = self.transforms(gt)
             else:
-                img = torch.as_tensor(img, dtype=torch.float64)
-                gt = torch.as_tensor(gt, dtype=torch.float64)
+                transform = transforms.Compose([transforms.ToTensor()])
+                # img = torch.as_tensor(img, dtype=torch.float64)
+                # gt = torch.as_tensor(gt, dtype=torch.float64)
+                img = transform(img)
+                gt = transform(gt)
 
             return img, gt
         else:

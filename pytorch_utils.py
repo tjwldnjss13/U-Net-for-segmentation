@@ -1,15 +1,39 @@
 import torch
 
 
-def pad_4dim(x, ref, cuda=True):
-    zeros = torch.zeros(x.shape[0], x.shape[1], 1, x.shape[3])
-    if cuda:
-        zeros = zeros.cuda()
+def mirrored_padding(img, out_size):
+    c_img, h_img, w_img = img.shape
+    h_out, w_out = out_size
+    pad_h, pad_w = int((h_out - h_img) / 2), int((w_out - w_img) / 2)
+
+    out_tensor = torch.zeros(c_img, out_size[0], out_size[1])
+    out_tensor[:, pad_h:-pad_h, pad_w:-pad_w] = img
+
+    # Up, Down padding
+    out_tensor[:, :pad_h, pad_w:-pad_w] = torch.flip(img[:, :pad_h, :], [1])
+    out_tensor[:, -pad_h:, pad_w:-pad_w] = torch.flip(img[:, -pad_h:, :], [1])
+
+    # Left, Right padding
+    out_tensor[:, pad_h:-pad_h, :pad_w] = torch.flip(img[:, :, :pad_w], [2])
+    out_tensor[:, pad_h:-pad_h, -pad_w:] = torch.flip(img[:, :, -pad_w:], [2])
+
+    # Top left, right padding
+    out_tensor[:, :pad_h, :pad_w] = torch.flip(img[:, :pad_h, :pad_w], [1, 2])
+    out_tensor[:, :pad_h, -pad_w:] = torch.flip(img[:, :pad_h, -pad_w:], [1, 2])
+
+    # Bottom left, right padding
+    out_tensor[:, -pad_h:, :pad_w] = torch.flip(img[:, -pad_h:, :pad_w], [1, 2])
+    out_tensor[:, -pad_h:, -pad_w:] = torch.flip(img[:, -pad_h:, -pad_w:], [1, 2])
+
+    return out_tensor
+
+
+def pad_4dim(x, ref):
+    device = x.device
+    zeros = torch.zeros(x.shape[0], x.shape[1], 1, x.shape[3]).to(device)
     while x.shape[2] < ref.shape[2]:
         x = torch.cat([x, zeros], dim=2)
-    zeros = torch.zeros(x.shape[0], x.shape[1], x.shape[2], 1)
-    if cuda:
-        zeros = zeros.cuda()
+    zeros = torch.zeros(x.shape[0], x.shape[1], x.shape[2], 1).to(device)
     while x.shape[3] < ref.shape[3]:
         x = torch.cat([x, zeros], dim=3)
 
